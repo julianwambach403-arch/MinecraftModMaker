@@ -1,13 +1,23 @@
 package com.modmaker.client;
 
 import com.modmaker.ModMaker;
+import com.modmaker.client.gui.WorkspaceScreen;
 import com.modmaker.content.ContentManager;
 import com.modmaker.pack.RuntimeResourcePack;
+import com.mojang.blaze3d.platform.InputConstants;
 import net.fabricmc.api.ClientModInitializer;
+import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
+import net.fabricmc.fabric.api.client.command.v2.ClientCommands;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
+import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper;
+import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
+import org.lwjgl.glfw.GLFW;
 
 public class ModMakerClient implements ClientModInitializer {
+	private static KeyMapping openWorkspaceKey;
+
 	@Override
 	public void onInitializeClient() {
 		ClientLifecycleEvents.CLIENT_STARTED.register(client -> {
@@ -27,8 +37,38 @@ public class ModMakerClient implements ClientModInitializer {
 				if (changed) {
 					client.reloadResourcePacks();
 				}
+				refreshCreativeTabs(client);
 			});
 		});
+
+		openWorkspaceKey = KeyMappingHelper.registerKeyMapping(new KeyMapping(
+				"key.modmaker.open", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_K, KeyMapping.Category.MISC));
+
+		ClientTickEvents.END_CLIENT_TICK.register(client -> {
+			while (openWorkspaceKey.consumeClick()) {
+				client.gui.setScreen(new WorkspaceScreen(client.gui.screen()));
+			}
+		});
+
+		ClientCommandRegistrationCallback.EVENT.register((dispatcher, buildContext) ->
+				dispatcher.register(ClientCommands.literal("modmakergui").executes(context -> {
+					Minecraft client = Minecraft.getInstance();
+					client.schedule(() -> client.gui.setScreen(new WorkspaceScreen(null)));
+					return 1;
+				})));
+	}
+
+	/** Rebuilds creative tab contents so newly created elements appear without re-entering the world. */
+	private static void refreshCreativeTabs(Minecraft client) {
+		if (client.level == null || client.player == null) return;
+		try {
+			net.minecraft.world.item.CreativeModeTabs.tryRebuildTabContents(
+					client.level.enabledFeatures(),
+					client.player.canUseGameMasterBlocks(),
+					client.level.registryAccess());
+		} catch (Exception e) {
+			ModMaker.LOGGER.warn("ModMaker could not refresh creative tabs: {}", e.toString());
+		}
 	}
 
 	/** Adds the runtime pack to the enabled resource packs; returns true when newly added. */
