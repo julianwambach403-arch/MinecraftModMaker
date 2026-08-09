@@ -1,0 +1,28 @@
+{
+	"schemaVersion": 1,
+	"id": "modmaker",
+	"version": "${version}",
+	"name": "ModMaker",
+	"description": "Create Minecraft mods live in-game: custom items, blocks, recipes and JavaScript events - like MCreator, but inside Minecraft. Import textures, scripts and shareable .mmpack files.",
+	"authors": [
+		"MinecraftModMaker"
+	],
+	"contact": {},
+	"license": "MIT",
+	"icon": "assets/modmaker/icon.png",
+	"environment": "*",
+	"entrypoints": {
+		"main": [
+			"com.modmaker.ModMaker"
+		],
+		"client": [
+			"com.modmaker.client.ModMakerClient"
+		]
+	},
+	"depends": {
+		"fabricloader": ">=0.19.3",
+		"minecraft": "~26.2",
+		"java": ">=25",
+		"fabric-api": "*"
+	}
+}
