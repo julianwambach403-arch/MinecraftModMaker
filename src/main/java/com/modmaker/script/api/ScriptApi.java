@@ -1,6 +1,7 @@
 package com.modmaker.script.api;
 
 import com.modmaker.ModMaker;
+import com.modmaker.script.RhinoCalls;
 import com.modmaker.script.ScriptEvents;
 import com.modmaker.script.ScriptManager;
 import net.minecraft.network.chat.Component;
@@ -29,10 +30,6 @@ public class ScriptApi {
 
 	// ------------------------------------------------------------------ callbacks
 
-	public interface UseCallback {
-		void run(PlayerApi player, int x, int y, int z);
-	}
-
 	public interface TickCallback {
 		void run();
 	}
@@ -46,47 +43,49 @@ public class ScriptApi {
 	}
 
 	// ------------------------------------------------------------------ event registration
+	// JS functions are kept as raw Rhino Function objects and invoked via RhinoCalls
+	// (interface adapters would create reflection proxies blocked by the sandbox).
 
 	/** Fired when a player right-clicks with the ModMaker item {@code defId} ("*" = any). */
-	public void onUse(String defId, UseCallback callback) {
+	public void onUse(String defId, org.mozilla.javascript.Function callback) {
 		ScriptEvents.onItemUse(defId, (player, pos) -> {
 			if (player instanceof ServerPlayer serverPlayer) {
-				callback.run(new PlayerApi(serverPlayer), pos.getX(), pos.getY(), pos.getZ());
+				RhinoCalls.call(manager, callback, new PlayerApi(serverPlayer), pos.getX(), pos.getY(), pos.getZ());
 			}
 		});
 	}
 
 	/** Fired when a player breaks the ModMaker block {@code defId} ("*" = any). */
-	public void onBlockBreak(String defId, UseCallback callback) {
+	public void onBlockBreak(String defId, org.mozilla.javascript.Function callback) {
 		ScriptEvents.onBlockBreak(defId, (player, pos) -> {
 			if (player instanceof ServerPlayer serverPlayer) {
-				callback.run(new PlayerApi(serverPlayer), pos.getX(), pos.getY(), pos.getZ());
+				RhinoCalls.call(manager, callback, new PlayerApi(serverPlayer), pos.getX(), pos.getY(), pos.getZ());
 			}
 		});
 	}
 
 	/** Fired when a player right-clicks the ModMaker block {@code defId} ("*" = any). */
-	public void onBlockUse(String defId, UseCallback callback) {
+	public void onBlockUse(String defId, org.mozilla.javascript.Function callback) {
 		ScriptEvents.onBlockUse(defId, (player, pos) -> {
 			if (player instanceof ServerPlayer serverPlayer) {
-				callback.run(new PlayerApi(serverPlayer), pos.getX(), pos.getY(), pos.getZ());
+				RhinoCalls.call(manager, callback, new PlayerApi(serverPlayer), pos.getX(), pos.getY(), pos.getZ());
 			}
 		});
 	}
 
 	/** Runs the callback every {@code intervalTicks} server ticks (20 ticks = 1 second). */
-	public void onTick(int intervalTicks, TickCallback callback) {
-		manager.addTickTask(intervalTicks, callback);
+	public void onTick(int intervalTicks, org.mozilla.javascript.Function callback) {
+		manager.addTickTask(intervalTicks, () -> RhinoCalls.call(manager, callback));
 	}
 
 	/** Fired for every chat message. */
-	public void onChat(ChatCallback callback) {
-		manager.addChatHandler(callback);
+	public void onChat(org.mozilla.javascript.Function callback) {
+		manager.addChatHandler((player, message) -> RhinoCalls.call(manager, callback, player, message));
 	}
 
 	/** Fired when a player joins the server/world. */
-	public void onJoin(JoinCallback callback) {
-		manager.addJoinHandler(callback);
+	public void onJoin(org.mozilla.javascript.Function callback) {
+		manager.addJoinHandler(player -> RhinoCalls.call(manager, callback, player));
 	}
 
 	// ------------------------------------------------------------------ actions
