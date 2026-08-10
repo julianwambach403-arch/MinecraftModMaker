@@ -1,0 +1,15 @@
+{
+  "python.defaultInterpreterPath": "python3",
+  "python.terminal.activateEnvironment": true,
+  "files.exclude": {
+    "**/__pycache__": true,
+    "**/.gradle": true,
+    "generated-mod/.gradle": true,
+    "generated-mod/build": true,
+    "generated-mod/run": true
+  },
+  "editor.formatOnSave": true,
+  "[python]": {
+    "editor.defaultFormatter": "ms-python.python"
+  }
+}

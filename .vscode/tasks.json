@@ -1,0 +1,51 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Dependencies installieren",
+      "type": "shell",
+      "command": "python3 -m pip install -r requirements.txt",
+      "problemMatcher": [],
+      "group": "build"
+    },
+    {
+      "label": "Mod kompilieren",
+      "type": "shell",
+      "command": "python3 compile_mod.py",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": [],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      }
+    },
+    {
+      "label": "Testlauf (Unit-Tests)",
+      "type": "shell",
+      "command": "python3 run_test.py",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": [],
+      "group": {
+        "kind": "test",
+        "isDefault": true
+      }
+    },
+    {
+      "label": "Minecraft Testlauf (Dev-Client)",
+      "type": "shell",
+      "command": "python3 run_client.py",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      }
+    }
+  ]
+}

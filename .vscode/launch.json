@@ -1,0 +1,41 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Mod kompilieren",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/compile_mod.py",
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "justMyCode": true
+    },
+    {
+      "name": "Testlauf (Unit-Tests)",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/run_test.py",
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "justMyCode": true
+    },
+    {
+      "name": "Minecraft Testlauf (Dev-Client)",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/run_client.py",
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "justMyCode": true
+    },
+    {
+      "name": "Mod-Definition anzeigen",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/mod.py",
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "justMyCode": true
+    }
+  ]
+}

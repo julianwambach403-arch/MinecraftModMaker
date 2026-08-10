@@ -1,0 +1,40 @@
+# Generated Fabric mod project
+generated-mod/
+*-mod-output/
+my-fabric-mod/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+.env
+*.egg-info/
+dist/
+build/
+
+# Gradle / Java (if present at root)
+.gradle/
+*.class
+*.jar
+!gradle/wrapper/gradle-wrapper.jar
+
+# IDE
+.idea/
+*.iml
+.classpath
+.project
+.settings/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Minecraft run data
+run/
+logs/
+*.log
+
+# Local JDK (auto-downloaded for Minecraft 26.x)
+.jdk/
