@@ -1,0 +1,21 @@
+{
+  "name": "shadercreator",
+  "version": "1.0.0",
+  "description": "ShaderCreator – Visuelles Studio zum Erstellen von Minecraft-Shaderpacks (OptiFine/Iris), inspiriert von MCreator. / Visual studio for creating Minecraft shaderpacks (OptiFine/Iris), inspired by MCreator.",
+  "type": "module",
+  "scripts": {
+    "start": "node tools/serve.mjs",
+    "test": "node tools/validate.mjs"
+  },
+  "keywords": [
+    "minecraft",
+    "shader",
+    "shaderpack",
+    "optifine",
+    "iris",
+    "mcreator",
+    "glsl",
+    "editor"
+  ],
+  "license": "MIT"
+}
