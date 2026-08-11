@@ -34,8 +34,10 @@ dependencies {
     runtimeOnly "de.maxhenkel.voicechat:voicechat-api:${project.voicechat_api_version}:fabric-stub"
 
     include implementation("com.googlecode.soundlibs:mp3spi:1.9.5.4")
-    include implementation("com.googlecode.soundlibs:vorbisspi:1.0.3.3")
     include implementation("com.googlecode.soundlibs:tritonus-share:0.3.7.4")
+    include implementation("io.github.jseproject:jse-spi-vorbis:1.1.0")
+    include implementation("io.github.jseproject:jse-api:1.1.0")
+    include implementation("org.gagravarr:vorbis-java-core:0.8")
 
     testImplementation platform("org.junit:junit-bom:6.0.0")
     testImplementation "org.junit.jupiter:junit-jupiter"
