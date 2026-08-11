@@ -25,6 +25,8 @@ class PackManagerTest {
         Files.createDirectories(voices);
         Files.write(voices.resolve("hello.wav"), new byte[]{1, 2});
         Files.writeString(voices.resolve("hello.txt"), "Hallo Welt");
+        Files.write(voices.resolve("01_Dub_Line_44-048.ogg"), new byte[]{1, 2});
+        Files.write(voices.resolve("dub_video.ogv"), new byte[]{1, 2, 3});
 
         Path judges = temporary.resolve("imports/packs_judges/Jury");
         Files.createDirectories(judges);
@@ -36,8 +38,13 @@ class PackManagerTest {
 
         assertEquals(1, manager.registry().voicePacks().size());
         assertEquals(1, manager.registry().judgePacks().size());
-        assertEquals("Hallo Welt", manager.registry().voicePacks().values().iterator().next()
-                .clips().getFirst().caption().orElseThrow());
+        ContentPacks.VoicePack voicePack = manager.registry().voicePacks().values().iterator().next();
+        assertEquals("Hallo Welt", voicePack.clips().stream()
+                .filter(clip -> clip.title().equals("hello")).findFirst().orElseThrow()
+                .caption().orElseThrow());
+        assertTrue(voicePack.isDubPack());
+        assertEquals(44.048D, voicePack.clips().stream().filter(ContentPacks.VoiceClip::isDubClip)
+                .findFirst().orElseThrow().dubTimestampSeconds(), 0.0001D);
     }
 
     @Test

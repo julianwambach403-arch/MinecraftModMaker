@@ -59,9 +59,11 @@ final class ClientVideoManager {
                 signalReady(chunk.assetKey());
                 playPending(chunk.assetKey());
             }
-        } catch (IOException exception) {
-            Minecraft.getInstance().player.sendSystemMessage(
-                    Component.literal("Choicer Voicer: Video konnte nicht gespeichert werden."));
+        } catch (IOException | RuntimeException exception) {
+            if (Minecraft.getInstance().player != null) {
+                Minecraft.getInstance().player.sendSystemMessage(
+                        Component.literal("Choicer Voicer: Video konnte nicht gespeichert werden."));
+            }
         }
     }
 

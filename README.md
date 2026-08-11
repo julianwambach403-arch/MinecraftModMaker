@@ -1,6 +1,6 @@
 # Choicer Voicer für Fabric
 
-Serverseitiges Minispiel für **Minecraft Java 26.1.2**. Die Mod spielt
+Minispiel für **Minecraft Java 26.1.2**. Die Mod spielt
 Choicer-Voicer-Hörbeispiele ab, nimmt die Nachahmung über
 [Simple Voice Chat](https://modrinth.com/plugin/simple-voice-chat) auf und lässt
 eine fünfköpfige Jury abstimmen.
@@ -8,20 +8,23 @@ eine fünfköpfige Jury abstimmen.
 ## Voraussetzungen
 
 - Minecraft Java 26.1.2
-- Fabric Loader 0.19.3 oder neuer
+- Fabric Loader 0.19.2 oder neuer
 - Fabric API 0.155.2+26.1.2
 - Simple Voice Chat 2.6.21+26.1.2 auf Server **und Clients**
 - Java 25
 - Freigeschalteter UDP-Port 24454 für Simple Voice Chat
+- Für Dub-Videos: FFmpeg im System-PATH jedes teilnehmenden Clients
 
-Die Choicer-Voicer-Mod selbst muss nur auf dem Fabric-Server installiert
-werden. Clients benötigen Fabric, Fabric API und Simple Voice Chat.
+Für normale Voice-Packs reicht die Choicer-Voicer-Mod auf dem Server. Für
+Dub-Packs muss dieselbe JAR zusätzlich bei allen Mitspielern im Client installiert
+sein, weil Minecraft Videos nicht serverseitig anzeigen kann.
 
 ## Installation
 
 1. `choicer-voicer-1.0.0.jar`, Fabric API und Simple Voice Chat in den
    `mods`-Ordner des Servers legen.
 2. Fabric API und Simple Voice Chat auch bei allen Mitspielern installieren.
+   Für Dub-Packs zusätzlich `choicer-voicer-1.0.0.jar` clientseitig installieren.
 3. UDP-Port 24454 am Server und in der Firewall freigeben.
 4. Server einmal starten. Die Mod erzeugt
    `config/choicer_voicer/config.json` und die Pack-Verzeichnisse.
@@ -51,11 +54,30 @@ Beschädigte oder unsichere Archive werden nicht installiert.
 - JSON-Metadaten; bekannte Namen werden übernommen, unbekannte Werte erhalten
 - Judges: `judge1` bis `judge5`, `judgeX_voice`, `scoreblip1` bis
   `scoreblip5`, `success` und `judgeX_success`
+- Dub: `dub_video.ogv`, `_backing_track` und Zeitangaben am Ende des
+  Clipnamens, beispielsweise `01_Satz_44-048.ogg` für 44,048 Sekunden
 
 Die Bilder eines Judge-Packs können ohne zusätzliche Client-Ressourcen nicht
 als eigene Minecraft-Oberfläche angezeigt werden. Namen und Stimmen werden
-verwendet, die Abstimmung erscheint im Chat. Dub-, Studio-, Menü-, Host- und
+verwendet, die Abstimmung erscheint im Chat. Studio-, Menü-, Host- und
 Figuren-Packs gehören nicht zum Umfang dieser Version.
+
+## Dub-Videos
+
+Beim ersten Spiel überträgt der Server `dub_video.ogv` in begrenzten Blöcken
+an die Clients und speichert es unter `config/choicer_voicer/videos`. Die Lobby
+wartet auf alle Downloads. Das passende Segment erscheint bildschirmfüllend
+beim Anhören und erneut während der Aufnahme. Nach den Runden läuft das Video
+vom Anfang und die temporären Spieleraufnahmen werden an ihren Zeitpositionen
+über Simple Voice Chat abgespielt.
+
+Auf jedem Spieler-PC muss `ffmpeg` über die Kommandozeile erreichbar sein:
+
+```text
+Windows: winget install Gyan.FFmpeg
+macOS:   brew install ffmpeg
+Linux:   sudo apt install ffmpeg
+```
 
 ## Befehle
 
@@ -86,7 +108,8 @@ Originalspiels ist nicht verfügbar.
 
 Mikrofonpakete werden nur während des sichtbaren Aufnahmefensters für den
 aktiven Spieler dekodiert. Aufnahmen werden nicht auf die Festplatte
-geschrieben und nach der Bewertung aus dem Arbeitsspeicher entfernt.
+geschrieben. Bei Dub-Packs bleiben sie bis zur Ergebniswiedergabe ausschließlich
+im Arbeitsspeicher und werden anschließend entfernt.
 
 ## Entwicklung
 

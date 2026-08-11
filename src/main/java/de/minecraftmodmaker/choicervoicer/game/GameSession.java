@@ -256,6 +256,11 @@ public final class GameSession {
         long durationTicks = Math.max(20L, Math.round(AudioCodec.durationSeconds(reference) * 20D));
         stateDeadlineTick = server.getTickCount() + durationTicks
                 + Math.round(config.recordingTailMillis() / 50D);
+        if (voicePack.isDubPack()) {
+            videos.play(player, voicePack, clip.dubTimestampSeconds(),
+                    AudioCodec.durationSeconds(reference)
+                            + config.recordingTailMillis() / 1000D);
+        }
         actionbar(player, Component.literal("JETZT SPRECHEN!").withStyle(ChatFormatting.RED));
     }
 
