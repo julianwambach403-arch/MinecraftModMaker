@@ -19,7 +19,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public final class ChoicerVoicechatPlugin implements VoicechatPlugin {
     public static final String PLUGIN_ID = "choicer_voicer";
-    public static final String CATEGORY_ID = "choicer_voicer_game";
+    public static final String CATEGORY_ID = "choicer_voicer";
     private static final ChoicerVoicechatPlugin INSTANCE = new ChoicerVoicechatPlugin();
 
     private final Map<UUID, Recording> recordings = new ConcurrentHashMap<>();
