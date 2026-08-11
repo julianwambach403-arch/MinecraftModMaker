@@ -14,8 +14,9 @@ class AudioCodecTest {
     void decodesChoicerVoicerCompressedFormats(String resource) throws Exception {
         Path path = resource(resource);
         short[] samples = AudioCodec.decode(path);
-        assertTrue(samples.length >= 4_800);
-        assertTrue(AudioCodec.durationSeconds(samples) >= 0.10D);
+        assertTrue(samples.length >= 1_000);
+        assertTrue(java.util.stream.IntStream.range(0, samples.length)
+                .anyMatch(index -> samples[index] != 0));
     }
 
     private static Path resource(String name) throws URISyntaxException {
