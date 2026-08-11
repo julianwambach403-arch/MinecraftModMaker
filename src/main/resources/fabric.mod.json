@@ -8,13 +8,10 @@
     "MinecraftModMaker"
   ],
   "license": "MIT",
-  "environment": "*",
+  "environment": "server",
   "entrypoints": {
     "main": [
       "de.minecraftmodmaker.choicervoicer.ChoicerVoicerMod"
-    ],
-    "client": [
-      "de.minecraftmodmaker.choicervoicer.client.ChoicerVoicerClient"
     ],
     "voicechat": [
       "de.minecraftmodmaker.choicervoicer.voice.ChoicerVoicechatPlugin"

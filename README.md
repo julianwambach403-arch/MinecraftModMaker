@@ -1,9 +1,12 @@
 # Choicer Voicer für Fabric
 
-Minispiel für **Minecraft Java 26.1.2**. Die Mod spielt
+Serverseitiges Minispiel für **Minecraft Java 26.1.2**. Die Mod spielt
 Choicer-Voicer-Hörbeispiele ab, nimmt die Nachahmung über
 [Simple Voice Chat](https://modrinth.com/plugin/simple-voice-chat) auf und lässt
 eine fünfköpfige Jury abstimmen.
+
+Dub-Videos und das Endergebnis erscheinen auf einer **vom Server gehosteten
+Webseite** im Browser – nicht als Minecraft-Client-Overlay.
 
 ## Voraussetzungen
 
@@ -13,21 +16,22 @@ eine fünfköpfige Jury abstimmen.
 - Simple Voice Chat 2.6.21+26.1.2 auf Server **und Clients**
 - Java 25
 - Freigeschalteter UDP-Port 24454 für Simple Voice Chat
-- Für Dub-Videos: FFmpeg im System-PATH jedes teilnehmenden Clients
+- Für Dub-Packs: freigeschalteter HTTP-Port (Standard `8765`) und idealerweise
+  `ffmpeg` auf dem Server (wandelt `dub_video.ogv` nach WebM um)
 
-Für normale Voice-Packs reicht die Choicer-Voicer-Mod auf dem Server. Für
-Dub-Packs muss dieselbe JAR zusätzlich bei allen Mitspielern im Client installiert
-sein, weil Minecraft Videos nicht serverseitig anzeigen kann.
+Die Choicer-Voicer-Mod selbst muss **nur auf dem Fabric-Server** installiert
+werden. Clients benötigen Fabric, Fabric API und Simple Voice Chat.
 
 ## Installation
 
 1. `choicer-voicer-1.0.0.jar`, Fabric API und Simple Voice Chat in den
    `mods`-Ordner des Servers legen.
 2. Fabric API und Simple Voice Chat auch bei allen Mitspielern installieren.
-   Für Dub-Packs zusätzlich `choicer-voicer-1.0.0.jar` clientseitig installieren.
-3. UDP-Port 24454 am Server und in der Firewall freigeben.
+3. UDP-Port 24454 und für Dub-Packs TCP-Port 8765 freigeben.
 4. Server einmal starten. Die Mod erzeugt
    `config/choicer_voicer/config.json` und die Pack-Verzeichnisse.
+5. Optional in der Config `webPublicBaseUrl` auf die öffentliche Server-URL setzen,
+   z. B. `http://dein-server.de:8765`.
 
 ## GameBanana-Packs importieren
 
@@ -62,22 +66,28 @@ als eigene Minecraft-Oberfläche angezeigt werden. Namen und Stimmen werden
 verwendet, die Abstimmung erscheint im Chat. Studio-, Menü-, Host- und
 Figuren-Packs gehören nicht zum Umfang dieser Version.
 
-## Dub-Videos
+## Dub-Videos im Browser
 
-Beim ersten Spiel überträgt der Server `dub_video.ogv` in begrenzten Blöcken
-an die Clients und speichert es unter `config/choicer_voicer/videos`. Die Lobby
-wartet auf alle Downloads. Das passende Segment erscheint als **Vollbild-HUD-Overlay**
-bei allen Mitspielern beim Anhören und erneut während der Aufnahme. Nach den Runden
-läuft das Video vom Anfang und die temporären Spieleraufnahmen werden an ihren
-Zeitpositionen über Simple Voice Chat abgespielt.
+Beim Start eines Dub-Packs bereitet der Server das Video für den Browser vor und
+öffnet ein kleines Webportal:
 
-Auf jedem Spieler-PC muss `ffmpeg` über die Kommandozeile erreichbar sein. Wenn der
-Minecraft-Launcher FFmpeg nicht findet, erscheint eine Chat-Meldung. Typische Installation:
+- Startseite: `http://<Server>:8765/`
+- Live während des Spiels: `/watch`
+- Endergebnis mit Takes: `/result`
 
-```text
-Windows: winget install Gyan.FFmpeg
-macOS:   brew install ffmpeg
-Linux:   sudo apt install ffmpeg
+Die Chat-Nachricht enthält die Links. Mit `/choicervoicer web` kannst du sie
+jederzeit erneut anzeigen. Auf `/watch` springt das Video zur aktuellen
+Spielstelle. Auf `/result` lässt sich das fertige Dub mit den aufgenommenen
+Takes abspielen.
+
+Relevante Config-Werte:
+
+```json
+{
+  "webEnabled": true,
+  "webPort": 8765,
+  "webPublicBaseUrl": "http://dein-server.de:8765"
+}
 ```
 
 ## Befehle
@@ -95,6 +105,7 @@ Alle Spieler:
 - `/choicervoicer join` – einer offenen Lobby beitreten
 - `/choicervoicer leave` – Spiel verlassen
 - `/choicervoicer status` – aktuellen Zustand anzeigen
+- `/choicervoicer web` – Webportal-Links anzeigen
 
 Der Host tritt beim Start automatisch bei. In jeder Runde hört der aktive
 Spieler privat einen zufälligen Clip, bekommt einen Countdown und spricht
@@ -108,9 +119,9 @@ eigene, reproduzierbare Annäherung; der proprietäre Algorithmus des
 Originalspiels ist nicht verfügbar.
 
 Mikrofonpakete werden nur während des sichtbaren Aufnahmefensters für den
-aktiven Spieler dekodiert. Aufnahmen werden nicht auf die Festplatte
-geschrieben. Bei Dub-Packs bleiben sie bis zur Ergebniswiedergabe ausschließlich
-im Arbeitsspeicher und werden anschließend entfernt.
+aktiven Spieler dekodiert. Aufnahmen werden nicht dauerhaft als Rohdateien im
+Spielordner belassen; für Dub-Ergebnisse werden temporäre WAV-Takes nur für die
+Web-Ergebnisseite unter `config/choicer_voicer/web/` bereitgestellt.
 
 ## Entwicklung
 

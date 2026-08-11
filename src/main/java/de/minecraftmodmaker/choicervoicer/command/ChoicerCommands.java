@@ -24,6 +24,7 @@ public final class ChoicerCommands {
                 .then(Commands.literal("join").executes(ChoicerCommands::join))
                 .then(Commands.literal("leave").executes(ChoicerCommands::leave))
                 .then(Commands.literal("status").executes(ChoicerCommands::status))
+                .then(Commands.literal("web").executes(ChoicerCommands::web))
                 .then(Commands.literal("packs").executes(ChoicerCommands::packs))
                 .then(Commands.literal("start")
                         .requires(ChoicerCommands::operator)
@@ -76,6 +77,19 @@ public final class ChoicerCommands {
         return 1;
     }
 
+    private static int web(CommandContext<CommandSourceStack> context) {
+        if (!mod().webPortal().enabled()) {
+            context.getSource().sendFailure(Component.literal(
+                    "Webportal ist deaktiviert. Setze webEnabled/webPort in config/choicer_voicer/config.json."));
+            return 0;
+        }
+        String base = mod().webPortal().publicBaseUrl();
+        context.getSource().sendSuccess(() -> Component.literal("Webportal: " + base), false);
+        context.getSource().sendSuccess(() -> Component.literal("Live: " + base + "/watch"), false);
+        context.getSource().sendSuccess(() -> Component.literal("Ergebnis: " + base + "/result"), false);
+        return 1;
+    }
+
     private static int packs(CommandContext<CommandSourceStack> context) {
         var registry = mod().packs().registry();
         context.getSource().sendSuccess(() -> Component.literal(
@@ -97,7 +111,7 @@ public final class ChoicerCommands {
         ServerPlayer host = context.getSource().getPlayerOrException();
         if (!mod().session().start(pack, host)) {
             context.getSource().sendFailure(Component.literal(
-                    "Spiel konnte nicht gestartet werden. Prüfe Sitzung und Voice-Chat-Verbindung."));
+                    "Spiel konnte nicht gestartet werden. Prüfe Sitzung, Voice-Chat und bei Dub-Packs das Webportal."));
             return 0;
         }
         return 1;
