@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "id": "choicer_voicer",
+  "version": "${version}",
+  "name": "Choicer Voicer",
+  "description": "A server-side voice imitation game using Simple Voice Chat and Choicer Voicer content packs.",
+  "authors": [
+    "MinecraftModMaker"
+  ],
+  "license": "MIT",
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      "de.minecraftmodmaker.choicervoicer.ChoicerVoicerMod"
+    ],
+    "voicechat": [
+      "de.minecraftmodmaker.choicervoicer.voice.ChoicerVoicechatPlugin"
+    ]
+  },
+  "depends": {
+    "fabricloader": ">=0.19.3",
+    "minecraft": "26.1.2",
+    "java": ">=25",
+    "fabric-api": "*",
+    "voicechat_api": ">=${voicechat_api_version}"
+  }
+}
