@@ -34,6 +34,7 @@ dependencies {
     runtimeOnly "de.maxhenkel.voicechat:voicechat-api:${project.voicechat_api_version}:fabric-stub"
 
     include implementation("com.googlecode.soundlibs:mp3spi:1.9.5.4")
+    include implementation("com.googlecode.soundlibs:jlayer:1.0.1.4")
     include implementation("com.googlecode.soundlibs:tritonus-share:0.3.7.4")
     include implementation("com.github.stephengold:j-ogg-vorbis:1.0.6")
 
