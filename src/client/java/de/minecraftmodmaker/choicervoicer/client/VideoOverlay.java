@@ -3,13 +3,14 @@ package de.minecraftmodmaker.choicervoicer.client;
 import com.mojang.blaze3d.platform.NativeImage;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
-import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.client.renderer.texture.DynamicTexture;
-import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
+import org.lwjgl.system.MemoryUtil;
 
-final class VideoScreen extends Screen {
+import java.nio.ByteBuffer;
+
+final class VideoOverlay implements AutoCloseable {
     private static final Identifier TEXTURE_ID =
             Identifier.fromNamespaceAndPath("choicer_voicer", "dub_video");
 
@@ -17,31 +18,54 @@ final class VideoScreen extends Screen {
     private final long durationMillis;
     private final long startedAt = System.currentTimeMillis();
     private final DynamicTexture texture;
+    private final ByteBuffer uploadBuffer;
     private boolean closed;
+    private boolean sawFrame;
+    private String failure;
 
-    VideoScreen(FfmpegVideoDecoder decoder, long durationMillis) {
-        super(Component.literal("Choicer Voicer Dub"));
+    VideoOverlay(FfmpegVideoDecoder decoder, long durationMillis) {
         this.decoder = decoder;
         this.durationMillis = durationMillis;
         this.texture = new DynamicTexture("Choicer Voicer video",
                 FfmpegVideoDecoder.WIDTH, FfmpegVideoDecoder.HEIGHT, false);
+        this.uploadBuffer = MemoryUtil.memAlloc(FfmpegVideoDecoder.frameBytes());
         Minecraft.getInstance().getTextureManager().register(TEXTURE_ID, texture);
     }
 
-    @Override
-    public void tick() {
-        if (decoder.ended() || durationMillis > 0L
-                && System.currentTimeMillis() - startedAt >= durationMillis + 500L) {
-            onClose();
+    boolean tick() {
+        if (closed) {
+            return false;
         }
+        String decoderError = decoder.errorMessage();
+        if (decoderError != null && !sawFrame) {
+            failure = decoderError;
+            return false;
+        }
+        long elapsed = System.currentTimeMillis() - startedAt;
+        if (durationMillis > 0L && elapsed >= durationMillis + 750L) {
+            return false;
+        }
+        if (decoder.finished() && elapsed >= 750L) {
+            if (!sawFrame) {
+                failure = decoderError != null ? decoderError
+                        : "Kein Videobild empfangen. Ist FFmpeg installiert und im PATH?";
+            }
+            return false;
+        }
+        return true;
     }
 
-    @Override
-    public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float delta) {
+    void render(GuiGraphicsExtractor graphics) {
+        if (closed) {
+            return;
+        }
         byte[] frame = decoder.takeLatestFrame();
         if (frame != null) {
             upload(frame);
+            sawFrame = true;
         }
+        int width = graphics.guiWidth();
+        int height = graphics.guiHeight();
         graphics.fill(0, 0, width, height, 0xFF000000);
         double scale = Math.min(width / (double) FfmpegVideoDecoder.WIDTH,
                 height / (double) FfmpegVideoDecoder.HEIGHT);
@@ -49,47 +73,37 @@ final class VideoScreen extends Screen {
         int drawHeight = Math.max(1, (int) Math.round(FfmpegVideoDecoder.HEIGHT * scale));
         int x = (width - drawWidth) / 2;
         int y = (height - drawHeight) / 2;
+        // 12-arg blit: draw size + source UV size + texture size (10-arg wrongly uses draw size as UV).
         graphics.blit(RenderPipelines.GUI_TEXTURED, TEXTURE_ID, x, y, 0F, 0F,
-                drawWidth, drawHeight, FfmpegVideoDecoder.WIDTH, FfmpegVideoDecoder.HEIGHT);
+                drawWidth, drawHeight,
+                FfmpegVideoDecoder.WIDTH, FfmpegVideoDecoder.HEIGHT,
+                FfmpegVideoDecoder.WIDTH, FfmpegVideoDecoder.HEIGHT);
+    }
+
+    String failure() {
+        return failure;
     }
 
     @Override
-    public boolean isPauseScreen() {
-        return false;
-    }
-
-    @Override
-    public void onClose() {
-        closeVideo();
-        if (minecraft != null && minecraft.screen == this) {
-            minecraft.setScreen(null);
-        }
-    }
-
-    void closeVideo() {
+    public void close() {
         if (closed) {
             return;
         }
         closed = true;
         decoder.close();
+        MemoryUtil.memFree(uploadBuffer);
         Minecraft.getInstance().getTextureManager().release(TEXTURE_ID);
     }
 
     private void upload(byte[] frame) {
         NativeImage pixels = texture.getPixels();
-        if (pixels == null) {
+        if (pixels == null || frame.length != FfmpegVideoDecoder.frameBytes()) {
             return;
         }
-        for (int y = 0; y < FfmpegVideoDecoder.HEIGHT; y++) {
-            for (int x = 0; x < FfmpegVideoDecoder.WIDTH; x++) {
-                int offset = (y * FfmpegVideoDecoder.WIDTH + x) * 4;
-                int red = frame[offset] & 0xFF;
-                int green = frame[offset + 1] & 0xFF;
-                int blue = frame[offset + 2] & 0xFF;
-                int alpha = frame[offset + 3] & 0xFF;
-                pixels.setPixelABGR(x, y, alpha << 24 | blue << 16 | green << 8 | red);
-            }
-        }
+        uploadBuffer.clear();
+        uploadBuffer.put(frame);
+        uploadBuffer.flip();
+        MemoryUtil.memCopy(MemoryUtil.memAddress(uploadBuffer), pixels.getPointer(), frame.length);
         texture.upload();
     }
 }

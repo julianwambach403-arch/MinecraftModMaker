@@ -3,6 +3,7 @@ package de.minecraftmodmaker.choicervoicer.client;
 import de.minecraftmodmaker.choicervoicer.network.DubPayloads;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.network.chat.Component;
 
 import java.io.IOException;
@@ -19,7 +20,7 @@ final class ClientVideoManager {
     private final Path cache;
     private final Map<String, Download> downloads = new HashMap<>();
     private final Map<String, DubPayloads.VideoControl> pending = new HashMap<>();
-    private VideoScreen screen;
+    private VideoOverlay overlay;
 
     ClientVideoManager(Path cache) {
         this.cache = cache.toAbsolutePath().normalize();
@@ -58,12 +59,10 @@ final class ClientVideoManager {
                 Files.move(partial(chunk.assetKey()), completed, StandardCopyOption.REPLACE_EXISTING);
                 signalReady(chunk.assetKey());
                 playPending(chunk.assetKey());
+                tell("Dub-Video geladen.");
             }
         } catch (IOException | RuntimeException exception) {
-            if (Minecraft.getInstance().player != null) {
-                Minecraft.getInstance().player.sendSystemMessage(
-                        Component.literal("Choicer Voicer: Video konnte nicht gespeichert werden."));
-            }
+            tell("Video konnte nicht gespeichert werden.");
         }
     }
 
@@ -73,13 +72,30 @@ final class ClientVideoManager {
         }
         if (control.action() == DubPayloads.VideoControl.Action.STOP) {
             pending.remove(control.assetKey());
-            closeScreen();
+            closeOverlay();
             return;
         }
         if (Files.exists(completed(control.assetKey()))) {
             play(control);
         } else {
             pending.put(control.assetKey(), control);
+            tell("Warte auf Dub-Video-Download …");
+        }
+    }
+
+    void clientTick() {
+        if (overlay != null && !overlay.tick()) {
+            String failure = overlay.failure();
+            closeOverlay();
+            if (failure != null && !failure.isBlank()) {
+                tell(failure);
+            }
+        }
+    }
+
+    void render(GuiGraphicsExtractor graphics) {
+        if (overlay != null) {
+            overlay.render(graphics);
         }
     }
 
@@ -95,28 +111,20 @@ final class ClientVideoManager {
     }
 
     private void play(DubPayloads.VideoControl control) {
-        closeScreen();
+        closeOverlay();
         try {
             FfmpegVideoDecoder decoder = new FfmpegVideoDecoder(completed(control.assetKey()),
                     control.offsetMillis(), control.durationMillis());
-            screen = new VideoScreen(decoder, control.durationMillis());
-            Minecraft.getInstance().setScreen(screen);
+            overlay = new VideoOverlay(decoder, control.durationMillis());
         } catch (IOException exception) {
-            Minecraft minecraft = Minecraft.getInstance();
-            if (minecraft.player != null) {
-                minecraft.player.sendSystemMessage(Component.literal(
-                        "Choicer Voicer benötigt FFmpeg im System-PATH, um Dub-Videos anzuzeigen."));
-            }
+            tell("Choicer Voicer benötigt FFmpeg im System-PATH, um Dub-Videos anzuzeigen.");
         }
     }
 
-    private void closeScreen() {
-        if (screen != null) {
-            screen.closeVideo();
-            if (Minecraft.getInstance().screen == screen) {
-                Minecraft.getInstance().setScreen(null);
-            }
-            screen = null;
+    private void closeOverlay() {
+        if (overlay != null) {
+            overlay.close();
+            overlay = null;
         }
     }
 
@@ -130,6 +138,13 @@ final class ClientVideoManager {
 
     private static boolean validKey(String key) {
         return key != null && key.length() <= 160 && key.matches("[a-z0-9_-]+");
+    }
+
+    private static void tell(String message) {
+        Minecraft minecraft = Minecraft.getInstance();
+        if (minecraft.player != null) {
+            minecraft.player.sendSystemMessage(Component.literal("Choicer Voicer: " + message));
+        }
     }
 
     private static final class Download {

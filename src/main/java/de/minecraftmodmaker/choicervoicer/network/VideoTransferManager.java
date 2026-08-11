@@ -19,7 +19,7 @@ import java.util.Set;
 import java.util.UUID;
 
 public final class VideoTransferManager {
-    private static final int CHUNKS_PER_TICK = 4;
+    private static final int CHUNKS_PER_TICK = 16;
 
     private final Deque<Transfer> transfers = new ArrayDeque<>();
     private final Set<String> scheduled = new HashSet<>();

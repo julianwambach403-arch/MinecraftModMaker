@@ -2,8 +2,11 @@ package de.minecraftmodmaker.choicervoicer.client;
 
 import de.minecraftmodmaker.choicervoicer.network.DubPayloads;
 import net.fabricmc.api.ClientModInitializer;
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
+import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
 import net.fabricmc.loader.api.FabricLoader;
+import net.minecraft.resources.Identifier;
 
 public final class ChoicerVoicerClient implements ClientModInitializer {
     @Override
@@ -14,5 +17,8 @@ public final class ChoicerVoicerClient implements ClientModInitializer {
                 (payload, context) -> context.client().execute(() -> videos.accept(payload)));
         ClientPlayNetworking.registerGlobalReceiver(DubPayloads.VideoControl.TYPE,
                 (payload, context) -> context.client().execute(() -> videos.control(payload)));
+        ClientTickEvents.END_CLIENT_TICK.register(client -> videos.clientTick());
+        HudElementRegistry.addLast(Identifier.fromNamespaceAndPath("choicer_voicer", "dub_video"),
+                (graphics, delta) -> videos.render(graphics));
     }
 }

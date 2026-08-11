@@ -66,12 +66,13 @@ Figuren-Packs gehören nicht zum Umfang dieser Version.
 
 Beim ersten Spiel überträgt der Server `dub_video.ogv` in begrenzten Blöcken
 an die Clients und speichert es unter `config/choicer_voicer/videos`. Die Lobby
-wartet auf alle Downloads. Das passende Segment erscheint bildschirmfüllend
-beim Anhören und erneut während der Aufnahme. Nach den Runden läuft das Video
-vom Anfang und die temporären Spieleraufnahmen werden an ihren Zeitpositionen
-über Simple Voice Chat abgespielt.
+wartet auf alle Downloads. Das passende Segment erscheint als **Vollbild-HUD-Overlay**
+bei allen Mitspielern beim Anhören und erneut während der Aufnahme. Nach den Runden
+läuft das Video vom Anfang und die temporären Spieleraufnahmen werden an ihren
+Zeitpositionen über Simple Voice Chat abgespielt.
 
-Auf jedem Spieler-PC muss `ffmpeg` über die Kommandozeile erreichbar sein:
+Auf jedem Spieler-PC muss `ffmpeg` über die Kommandozeile erreichbar sein. Wenn der
+Minecraft-Launcher FFmpeg nicht findet, erscheint eine Chat-Meldung. Typische Installation:
 
 ```text
 Windows: winget install Gyan.FFmpeg

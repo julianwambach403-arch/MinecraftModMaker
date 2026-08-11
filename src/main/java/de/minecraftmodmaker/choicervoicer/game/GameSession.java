@@ -228,7 +228,7 @@ public final class GameSession {
         clip.caption().filter(caption -> !caption.isBlank()).ifPresent(caption ->
                 player.sendSystemMessage(Component.literal("Text: " + caption), false));
         if (voicePack.isDubPack()) {
-            videos.play(player, voicePack, clip.dubTimestampSeconds(),
+            playVideoForParticipants(clip.dubTimestampSeconds(),
                     AudioCodec.durationSeconds(reference));
         }
         activeAudio = voice.play(reference, List.of(player.getUUID()),
@@ -244,6 +244,9 @@ public final class GameSession {
         }
         state = State.COUNTDOWN;
         stateDeadlineTick = server.getTickCount() + config.countdownSeconds() * 20L;
+        if (voicePack.isDubPack()) {
+            stopVideoForParticipants();
+        }
     }
 
     private void startRecording() {
@@ -257,7 +260,7 @@ public final class GameSession {
         stateDeadlineTick = server.getTickCount() + durationTicks
                 + Math.round(config.recordingTailMillis() / 50D);
         if (voicePack.isDubPack()) {
-            videos.play(player, voicePack, clip.dubTimestampSeconds(),
+            playVideoForParticipants(clip.dubTimestampSeconds(),
                     AudioCodec.durationSeconds(reference)
                             + config.recordingTailMillis() / 1000D);
         }
@@ -271,6 +274,9 @@ public final class GameSession {
             return;
         }
         short[] performance = voice.finishRecording(player.getUUID());
+        if (voicePack.isDubPack()) {
+            stopVideoForParticipants();
+        }
         if (voicePack.isDubPack() && performance.length > 0) {
             performances.add(new Performance(clip.dubTimestampSeconds(), performance));
         }
@@ -343,12 +349,7 @@ public final class GameSession {
                 .max().orElse(200L);
         state = State.REPLAY;
         broadcast(Component.literal("Dub-Wiedergabe startet …").withStyle(ChatFormatting.LIGHT_PURPLE));
-        for (UUID participant : participants) {
-            ServerPlayer player = server.getPlayerList().getPlayer(participant);
-            if (player != null) {
-                videos.play(player, voicePack, 0D, replayDurationTicks / 20D);
-            }
-        }
+        playVideoForParticipants(0D, replayDurationTicks / 20D);
         voicePack.backingTrack().ifPresent(path -> {
             try {
                 voice.play(AudioCodec.decode(path), List.copyOf(participants), () -> {
@@ -393,9 +394,7 @@ public final class GameSession {
         }
         participants.forEach(voice::cancelRecording);
         if (voicePack != null && voicePack.isDubPack()) {
-            participants.stream().map(id -> server.getPlayerList().getPlayer(id))
-                    .filter(java.util.Objects::nonNull)
-                    .forEach(player -> videos.stop(player, voicePack));
+            stopVideoForParticipants();
         }
         if (reason != null) {
             broadcast(Component.literal("Choicer Voicer beendet: " + reason).withStyle(ChatFormatting.RED));
@@ -406,6 +405,24 @@ public final class GameSession {
         performances.clear();
         reference = new short[0];
         activeAudio = null;
+    }
+
+    private void playVideoForParticipants(double offsetSeconds, double durationSeconds) {
+        for (UUID participant : participants) {
+            ServerPlayer player = server.getPlayerList().getPlayer(participant);
+            if (player != null) {
+                videos.play(player, voicePack, offsetSeconds, durationSeconds);
+            }
+        }
+    }
+
+    private void stopVideoForParticipants() {
+        for (UUID participant : participants) {
+            ServerPlayer player = server.getPlayerList().getPlayer(participant);
+            if (player != null) {
+                videos.stop(player, voicePack);
+            }
+        }
     }
 
     private ServerPlayer activePlayer() {
