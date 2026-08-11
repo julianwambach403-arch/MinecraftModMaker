@@ -14,7 +14,7 @@ class AudioCodecTest {
     void decodesChoicerVoicerCompressedFormats(String resource) throws Exception {
         Path path = resource(resource);
         short[] samples = AudioCodec.decode(path);
-        assertTrue(samples.length >= 1_000);
+        assertTrue(samples.length >= 1_000, "decoded samples: " + samples.length);
         assertTrue(java.util.stream.IntStream.range(0, samples.length)
                 .anyMatch(index -> samples[index] != 0));
     }
