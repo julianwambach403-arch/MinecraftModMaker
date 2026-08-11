@@ -24,7 +24,8 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicLong;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
@@ -33,6 +34,7 @@ import static de.minecraftmodmaker.choicervoicer.pack.ContentPacks.ImportIssue;
 public final class PackManager {
     private static final Set<String> AUDIO_EXTENSIONS = Set.of("wav", "mp3", "ogg");
     private static final Set<String> IMAGE_EXTENSIONS = Set.of("png", "jpg", "jpeg", "webp");
+    private static final Pattern DUB_TIMESTAMP = Pattern.compile(".*_(\\d+)-(\\d{1,3})$");
     private static final Gson GSON = new Gson();
 
     private final Path root;
@@ -160,7 +162,8 @@ public final class PackManager {
                 Optional<String> caption = findSibling(directory, basename, Set.of("txt"))
                         .flatMap(PackManager::readText);
                 Optional<Path> image = findSibling(directory, basename, IMAGE_EXTENSIONS);
-                clips.add(new ContentPacks.VoiceClip(safeId(basename), basename, audio, caption, image, Map.of()));
+                clips.add(new ContentPacks.VoiceClip(safeId(basename), basename, audio, caption, image,
+                        dubTimestamp(basename), Map.of()));
             }
             if (clips.isEmpty()) {
                 return Optional.empty();
@@ -169,7 +172,10 @@ public final class PackManager {
             String displayName = stringValue(metadata, "name").orElse(directory.getFileName().toString());
             Optional<Path> icon = findSibling(directory, "_icon", IMAGE_EXTENSIONS)
                     .or(() -> findSibling(directory, "_pack_filler_image", IMAGE_EXTENSIONS));
-            return Optional.of(new ContentPacks.VoicePack(id, displayName, directory, List.copyOf(clips), icon, metadata));
+            Optional<Path> video = findSibling(directory, "dub_video", Set.of("ogv", "ogg"));
+            Optional<Path> backingTrack = findSibling(directory, "_backing_track", AUDIO_EXTENSIONS);
+            return Optional.of(new ContentPacks.VoicePack(id, displayName, directory, List.copyOf(clips), icon,
+                    video, backingTrack, metadata));
         } catch (RuntimeException exception) {
             issues.add(new ImportIssue(ImportIssue.Severity.ERROR, directory.toString(), exception.getMessage()));
             return Optional.empty();
@@ -314,6 +320,16 @@ public final class PackManager {
     private static Optional<String> stringValue(Map<String, Object> map, String key) {
         Object value = map.get(key);
         return value instanceof String text && !text.isBlank() ? Optional.of(text) : Optional.empty();
+    }
+
+    private static double dubTimestamp(String basename) {
+        Matcher matcher = DUB_TIMESTAMP.matcher(basename);
+        if (!matcher.matches()) {
+            return -1D;
+        }
+        String fraction = matcher.group(2);
+        double milliseconds = Integer.parseInt(fraction) / Math.pow(10D, fraction.length());
+        return Integer.parseInt(matcher.group(1)) + milliseconds;
     }
 
     private static String extension(Path path) {

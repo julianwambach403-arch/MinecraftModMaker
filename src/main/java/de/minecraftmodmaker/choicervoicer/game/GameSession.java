@@ -6,6 +6,7 @@ import de.minecraftmodmaker.choicervoicer.audio.SimilarityScorer;
 import de.minecraftmodmaker.choicervoicer.config.ModConfig;
 import de.minecraftmodmaker.choicervoicer.pack.ContentPacks;
 import de.minecraftmodmaker.choicervoicer.pack.PackManager;
+import de.minecraftmodmaker.choicervoicer.network.VideoTransferManager;
 import de.minecraftmodmaker.choicervoicer.voice.ChoicerVoicechatPlugin;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
@@ -24,17 +25,19 @@ import java.util.concurrent.ThreadLocalRandom;
 
 public final class GameSession {
     public enum State {
-        IDLE, LOBBY, PLAYING_REFERENCE, COUNTDOWN, RECORDING, JUDGING
+        IDLE, LOBBY, PLAYING_REFERENCE, COUNTDOWN, RECORDING, JUDGING, REPLAY
     }
 
     private final MinecraftServer server;
     private final PackManager packs;
     private final ModConfig config;
+    private final VideoTransferManager videos;
     private final ChoicerVoicechatPlugin voice;
     private final SimilarityScorer scorer;
     private final Logger logger;
     private final List<UUID> participants = new ArrayList<>();
     private final Map<UUID, Integer> points = new LinkedHashMap<>();
+    private final List<Performance> performances = new ArrayList<>();
 
     private State state = State.IDLE;
     private ContentPacks.VoicePack voicePack;
@@ -46,12 +49,17 @@ public final class GameSession {
     private int playerIndex;
     private int round;
     private int revealedJudges;
+    private int replayIndex;
+    private long replayStartedTick;
+    private long replayDurationTicks;
     private AudioPlayer activeAudio;
 
-    public GameSession(MinecraftServer server, PackManager packs, ModConfig config, Logger logger) {
+    public GameSession(MinecraftServer server, PackManager packs, ModConfig config,
+                       VideoTransferManager videos, Logger logger) {
         this.server = server;
         this.packs = packs;
         this.config = config;
+        this.videos = videos;
         this.voice = ChoicerVoicechatPlugin.instance();
         this.scorer = new SimilarityScorer();
         this.logger = logger;
@@ -70,30 +78,35 @@ public final class GameSession {
     }
 
     public synchronized boolean start(ContentPacks.VoicePack selected, ServerPlayer host) {
-        if (state != State.IDLE || !voice.isReady() || !voice.isConnected(host.getUUID())) {
+        if (state != State.IDLE || !voice.isReady() || !voice.isConnected(host.getUUID())
+                || selected.isDubPack() && !videos.supportsVideo(host)) {
             return false;
         }
         voicePack = selected;
         judgePack = packs.registry().judgePacks().values().stream().findFirst().orElse(null);
         participants.clear();
         points.clear();
+        performances.clear();
         participants.add(host.getUUID());
         points.put(host.getUUID(), 0);
         playerIndex = 0;
         round = 0;
         state = State.LOBBY;
         stateDeadlineTick = server.getTickCount() + 200;
+        videos.queue(host, selected);
         broadcast(Component.literal("Choicer Voicer: " + selected.displayName()).withStyle(ChatFormatting.GOLD));
         broadcast(Component.literal("10 Sekunden Lobby – /choicervoicer join zum Mitspielen."));
         return true;
     }
 
     public synchronized boolean join(ServerPlayer player) {
-        if (state != State.LOBBY || participants.contains(player.getUUID()) || !voice.isConnected(player.getUUID())) {
+        if (state != State.LOBBY || participants.contains(player.getUUID()) || !voice.isConnected(player.getUUID())
+                || voicePack.isDubPack() && !videos.supportsVideo(player)) {
             return false;
         }
         participants.add(player.getUUID());
         points.put(player.getUUID(), 0);
+        videos.queue(player, voicePack);
         broadcast(Component.literal(player.getScoreboardName() + " spielt mit.").withStyle(ChatFormatting.GREEN));
         return true;
     }
@@ -145,7 +158,16 @@ public final class GameSession {
         switch (state) {
             case LOBBY -> {
                 if (tick >= stateDeadlineTick) {
-                    prepareTurn();
+                    if (allVideosReady()) {
+                        prepareTurn();
+                    } else {
+                        stateDeadlineTick = tick + 20;
+                        participants.stream().map(id -> server.getPlayerList().getPlayer(id))
+                                .filter(java.util.Objects::nonNull)
+                                .filter(player -> !videos.isReady(player, voicePack))
+                                .forEach(player -> actionbar(player, Component.literal(
+                                        "Dub-Video wird heruntergeladen …").withStyle(ChatFormatting.YELLOW)));
+                    }
                 }
             }
             case COUNTDOWN -> {
@@ -168,6 +190,7 @@ public final class GameSession {
                     revealNextJudge();
                 }
             }
+            case REPLAY -> tickReplay(tick);
             default -> {
             }
         }
@@ -180,7 +203,16 @@ public final class GameSession {
             return;
         }
         List<ContentPacks.VoiceClip> clips = voicePack.clips();
-        clip = clips.get(ThreadLocalRandom.current().nextInt(clips.size()));
+        if (voicePack.isDubPack()) {
+            List<ContentPacks.VoiceClip> dubClips = clips.stream()
+                    .filter(ContentPacks.VoiceClip::isDubClip)
+                    .sorted(Comparator.comparingDouble(ContentPacks.VoiceClip::dubTimestampSeconds))
+                    .toList();
+            int turn = round * participants.size() + playerIndex;
+            clip = dubClips.get(turn % dubClips.size());
+        } else {
+            clip = clips.get(ThreadLocalRandom.current().nextInt(clips.size()));
+        }
         try {
             reference = AudioCodec.decode(clip.audio());
         } catch (IOException exception) {
@@ -195,6 +227,10 @@ public final class GameSession {
                 .withStyle(ChatFormatting.AQUA));
         clip.caption().filter(caption -> !caption.isBlank()).ifPresent(caption ->
                 player.sendSystemMessage(Component.literal("Text: " + caption), false));
+        if (voicePack.isDubPack()) {
+            videos.play(player, voicePack, clip.dubTimestampSeconds(),
+                    AudioCodec.durationSeconds(reference));
+        }
         activeAudio = voice.play(reference, List.of(player.getUUID()),
                 () -> server.execute(this::beginCountdown));
         if (activeAudio == null) {
@@ -230,6 +266,9 @@ public final class GameSession {
             return;
         }
         short[] performance = voice.finishRecording(player.getUUID());
+        if (voicePack.isDubPack() && performance.length > 0) {
+            performances.add(new Performance(clip.dubTimestampSeconds(), performance));
+        }
         score = scorer.score(reference, performance, config.silenceThreshold());
         points.computeIfPresent(player.getUUID(), (ignored, current) -> current + score.points());
         state = State.JUDGING;
@@ -277,12 +316,58 @@ public final class GameSession {
             round++;
         }
         if (round >= config.rounds()) {
-            finish();
+            if (voicePack.isDubPack() && !performances.isEmpty()) {
+                startReplay();
+            } else {
+                finish();
+            }
             return;
         }
         state = State.COUNTDOWN;
         stateDeadlineTick = server.getTickCount() + 30;
         server.execute(this::prepareTurn);
+    }
+
+    private void startReplay() {
+        performances.sort(Comparator.comparingDouble(Performance::timestampSeconds));
+        replayIndex = 0;
+        replayStartedTick = server.getTickCount();
+        replayDurationTicks = performances.stream()
+                .mapToLong(performance -> Math.round((performance.timestampSeconds()
+                        + AudioCodec.durationSeconds(performance.samples()) + 2D) * 20D))
+                .max().orElse(200L);
+        state = State.REPLAY;
+        broadcast(Component.literal("Dub-Wiedergabe startet …").withStyle(ChatFormatting.LIGHT_PURPLE));
+        for (UUID participant : participants) {
+            ServerPlayer player = server.getPlayerList().getPlayer(participant);
+            if (player != null) {
+                videos.play(player, voicePack, 0D, replayDurationTicks / 20D);
+            }
+        }
+        voicePack.backingTrack().ifPresent(path -> {
+            try {
+                voice.play(AudioCodec.decode(path), List.copyOf(participants), () -> {
+                });
+            } catch (IOException exception) {
+                logger.warn("Could not play dub backing track {}", path, exception);
+            }
+        });
+    }
+
+    private void tickReplay(long tick) {
+        if (tick < replayStartedTick) {
+            return;
+        }
+        double elapsedSeconds = (tick - replayStartedTick) / 20D;
+        while (replayIndex < performances.size()
+                && performances.get(replayIndex).timestampSeconds() <= elapsedSeconds) {
+            Performance performance = performances.get(replayIndex++);
+            voice.play(performance.samples(), List.copyOf(participants), () -> {
+            });
+        }
+        if (tick - replayStartedTick >= replayDurationTicks) {
+            finish();
+        }
     }
 
     private void finish() {
@@ -302,12 +387,18 @@ public final class GameSession {
             activeAudio.stopPlaying();
         }
         participants.forEach(voice::cancelRecording);
+        if (voicePack != null && voicePack.isDubPack()) {
+            participants.stream().map(id -> server.getPlayerList().getPlayer(id))
+                    .filter(java.util.Objects::nonNull)
+                    .forEach(player -> videos.stop(player, voicePack));
+        }
         if (reason != null) {
             broadcast(Component.literal("Choicer Voicer beendet: " + reason).withStyle(ChatFormatting.RED));
         }
         state = State.IDLE;
         participants.clear();
         points.clear();
+        performances.clear();
         reference = new short[0];
         activeAudio = null;
     }
@@ -315,6 +406,15 @@ public final class GameSession {
     private ServerPlayer activePlayer() {
         return participants.isEmpty() || playerIndex >= participants.size() ? null
                 : server.getPlayerList().getPlayer(participants.get(playerIndex));
+    }
+
+    private boolean allVideosReady() {
+        if (!voicePack.isDubPack()) {
+            return true;
+        }
+        return participants.stream()
+                .map(id -> server.getPlayerList().getPlayer(id))
+                .allMatch(player -> player != null && videos.isReady(player, voicePack));
     }
 
     private void broadcast(Component message) {
@@ -325,5 +425,8 @@ public final class GameSession {
         if (player != null) {
             player.sendSystemMessage(message, true);
         }
+    }
+
+    private record Performance(double timestampSeconds, short[] samples) {
     }
 }

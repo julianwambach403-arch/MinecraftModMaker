@@ -15,8 +15,12 @@ public final class ContentPacks {
             Path audio,
             Optional<String> caption,
             Optional<Path> image,
+            double dubTimestampSeconds,
             Map<String, Object> metadata
     ) {
+        public boolean isDubClip() {
+            return dubTimestampSeconds >= 0D;
+        }
     }
 
     public record VoicePack(
@@ -25,8 +29,13 @@ public final class ContentPacks {
             Path root,
             List<VoiceClip> clips,
             Optional<Path> icon,
+            Optional<Path> dubVideo,
+            Optional<Path> backingTrack,
             Map<String, Object> metadata
     ) {
+        public boolean isDubPack() {
+            return dubVideo.isPresent() && clips.stream().anyMatch(VoiceClip::isDubClip);
+        }
     }
 
     public record Judge(
