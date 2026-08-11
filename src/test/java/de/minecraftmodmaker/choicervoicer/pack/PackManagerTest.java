@@ -58,7 +58,36 @@ class PackManagerTest {
         assertTrue(Files.notExists(temporary.resolve("outside.txt")));
     }
 
+    @Test
+    void importsNormalDirectoryEntryFromRelativeServerPath() throws IOException {
+        Path imports = temporary.resolve("imports");
+        Files.createDirectories(imports);
+        try (ZipOutputStream zip = new ZipOutputStream(Files.newOutputStream(imports.resolve("jujutsu.zip")))) {
+            zip.putNextEntry(new ZipEntry("Jujutsu_Kaisen/"));
+            zip.closeEntry();
+            zip.putNextEntry(new ZipEntry("Jujutsu_Kaisen/packs_voice/Jujutsu_Kaisen/"));
+            zip.closeEntry();
+            zip.putNextEntry(new ZipEntry("Jujutsu_Kaisen/packs_voice/Jujutsu_Kaisen/clip.ogg"));
+            zip.write(new byte[]{1, 2, 3});
+            zip.closeEntry();
+        }
+
+        Path workingDirectory = Path.of("").toAbsolutePath().normalize();
+        Path relativeRoot = workingDirectory.relativize(temporary.toAbsolutePath().normalize());
+        PackManager manager = manager(relativeRoot);
+        manager.initialize();
+        ContentPacks.ImportReport report = manager.importArchives();
+
+        assertTrue(report.successful());
+        assertEquals(1, report.importedArchives());
+        assertEquals(1, report.voicePacks());
+    }
+
     private PackManager manager() {
-        return new PackManager(temporary, ModConfig.defaults(), LoggerFactory.getLogger("test"));
+        return manager(temporary);
+    }
+
+    private PackManager manager(Path root) {
+        return new PackManager(root, ModConfig.defaults(), LoggerFactory.getLogger("test"));
     }
 }

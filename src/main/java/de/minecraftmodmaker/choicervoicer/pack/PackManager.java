@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.Reader;
 import java.nio.file.FileVisitResult;
+import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
@@ -42,9 +43,9 @@ public final class PackManager {
     private volatile ContentPacks.Registry registry = ContentPacks.Registry.empty();
 
     public PackManager(Path root, ModConfig config, Logger logger) {
-        this.root = root;
-        this.imports = root.resolve("imports");
-        this.installed = root.resolve("packs");
+        this.root = root.toAbsolutePath().normalize();
+        this.imports = this.root.resolve("imports");
+        this.installed = this.root.resolve("packs");
         this.config = config;
         this.logger = logger;
     }
@@ -255,7 +256,11 @@ public final class PackManager {
                     throw new IOException("Unvollständiger ZIP-Eintrag: " + entry.getName());
                 }
             }
-            Files.move(temporary, destination, StandardCopyOption.ATOMIC_MOVE);
+            try {
+                Files.move(temporary, destination, StandardCopyOption.ATOMIC_MOVE);
+            } catch (AtomicMoveNotSupportedException exception) {
+                Files.move(temporary, destination);
+            }
             success = true;
         } finally {
             if (!success) {
