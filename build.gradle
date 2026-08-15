@@ -76,11 +76,11 @@ jar {
 }
 
 tasks.register('copyRelease', Copy) {
-	dependsOn remapJar
-	from remapJar.archiveFile
+	dependsOn 'jar'
+	from { tasks.named('jar', org.gradle.api.tasks.bundling.AbstractArchiveTask).get().archiveFile }
 	into 'releases'
 }
 
 tasks.named('build').configure {
-	finalizedBy tasks.named('copyRelease')
+	finalizedBy 'copyRelease'
 }
