@@ -1,0 +1,43 @@
+{
+	"schemaVersion": 1,
+	"id": "baritoneplus",
+	"version": "${version}",
+	"name": "Baritone Plus",
+	"description": "Standalone Baritone for Minecraft 26.2 with a survival brain, stuck recovery, loot assist, HUD and extra commands. Bundles Baritone (LGPL-3.0).",
+	"authors": [
+		"MinecraftModMaker",
+		"leijurv",
+		"Brady"
+	],
+	"contact": {},
+	"license": "LGPL-3.0",
+	"icon": "assets/baritoneplus/icon.png",
+	"environment": "client",
+	"entrypoints": {
+		"client": [
+			"de.minecraftmodmaker.baritoneplus.BaritonePlusClient"
+		]
+	},
+	"depends": {
+		"fabricloader": ">=0.19.3",
+		"minecraft": "~26.2",
+		"java": ">=25",
+		"fabric-api": "*",
+		"baritone-meteor": "*"
+	},
+	"suggests": {
+		"modmenu": "*"
+	},
+	"custom": {
+		"modmenu": {
+			"links": {
+				"modmenu.discord": "https://discord.gg/s6fRBAUpmr"
+			}
+		}
+	},
+	"jars": [
+		{
+			"file": "META-INF/jars/baritone-meteor-26.2.jar"
+		}
+	]
+}
