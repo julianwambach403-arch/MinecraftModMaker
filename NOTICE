@@ -1,0 +1,17 @@
+MinClient
+=========
+
+MinClient is a rebranded fork of Meteor Client with additional modules and HUD
+elements. Branding and MinClient-specific features are by Minju26.
+
+This program is free software: you can redistribute it and/or modify it under
+the terms of the GNU General Public License version 3, as published by the
+Free Software Foundation.
+
+Original project
+----------------
+Meteor Client by Meteor Development
+https://github.com/MeteorDevelopment/meteor-client
+License: GNU General Public License v3.0
+
+All original Meteor Client copyright notices are preserved in the source.
