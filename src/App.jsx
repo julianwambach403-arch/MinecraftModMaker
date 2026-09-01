@@ -224,7 +224,15 @@ function App() {
         <div className="top-actions">
           <button className="icon-button" title="Hilfe"><CircleHelp size={18} /></button>
           <button className="button ghost" onClick={exportProject}><Download size={16} /> Exportieren</button>
-          <button className="button primary" onClick={runWorkflow}><Play size={16} fill="currentColor" /> Testen</button>
+          <button
+            className="button primary"
+            onClick={() => {
+              setShowRun(true);
+              setRunState("idle");
+            }}
+          >
+            <Play size={16} fill="currentColor" /> Testen
+          </button>
         </div>
       </header>
 
